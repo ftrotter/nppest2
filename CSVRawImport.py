@@ -93,11 +93,11 @@ class CSVRawImport:
                     # First occurrence of this column name
                     column_name_counts[col_name] = 0
 
-            # Create lowercase header string for MD5 calculation
+            # Create lowercase header string for original MD5 calculation
             lowercase_header = ','.join([h.lower() for h in header_row])
             
-            # Calculate MD5 hash of the lowercase header
-            md5_hash = hashlib.md5(lowercase_header.encode()).hexdigest()
+            # Calculate original MD5 hash of the lowercase header
+            original_md5_hash = hashlib.md5(lowercase_header.encode()).hexdigest()
 
             metadata_cache_dir = "cache_import_metadata"
             # Make a cache directory for manual renaming of columns and other metadata
@@ -108,14 +108,16 @@ class CSVRawImport:
             csv_basename = os.path.basename(full_path_to_csv_file)
             human_readable_name = os.path.splitext(csv_basename)[0].lower()
             
-            # Create JSON file path with the MD5 hash and human-readable name
-            json_cache_file = os.path.join(metadata_cache_dir, f"{md5_hash}.{human_readable_name}.json")
-            
-            # TODO the "human_readable_name" can and will be modified by the user. This should use the same glob loading method as the SQL cache
+            # Create a glob pattern for JSON cache files with the original MD5 hash
+            json_cache_pattern = os.path.join(metadata_cache_dir, f"{original_md5_hash}.*.json")
             
             import json
-            if os.path.exists(json_cache_file):
-                # Load column names from the cache file
+            # Check if cached metadata exists using glob pattern
+            json_cache_files = glob.glob(json_cache_pattern)
+            
+            if json_cache_files:
+                # Use the first matching file
+                json_cache_file = json_cache_files[0]
                 print(f"Found cached metadata for this header structure: {json_cache_file}")
                 with open(json_cache_file, 'r') as f:
                     metadata = json.load(f)
@@ -124,6 +126,8 @@ class CSVRawImport:
                         print("Using cached column names with manual renames")
                         column_names = metadata['column_names']
             else:
+                # Create a new JSON file path with the original MD5 hash and human-readable name
+                json_cache_file = os.path.join(metadata_cache_dir, f"{original_md5_hash}.{human_readable_name}.json")
                 # Create the cache file with the column names
                 print(f"Creating new metadata cache file: {json_cache_file}")
                 metadata = {
@@ -132,10 +136,16 @@ class CSVRawImport:
                 }
                 with open(json_cache_file, 'w') as f:
                     json.dump(metadata, f, indent=2)
+            
+            # Calculate a new MD5 hash based on the potentially renamed column names
+            # This ensures that if columns are renamed, a new SQL cache will be created
+            column_names_str = ','.join([col.lower() for col in column_names])
+            column_names_md5_hash = hashlib.md5(column_names_str.encode()).hexdigest()
+            print(f"Column names MD5 hash: {column_names_md5_hash}")
 
             # Check if cached CREATE TABLE SQL exists
             table_cache_dir = "cache_create_table_sql"
-            cache_pattern = os.path.join(table_cache_dir, f"{md5_hash}.*.sql")
+            cache_pattern = os.path.join(table_cache_dir, f"{column_names_md5_hash}.*.sql")
             
             # Ensure cache directory exists
             if not os.path.exists(table_cache_dir):
@@ -247,8 +257,8 @@ class CSVRawImport:
                 # Add CREATE TABLE SQL to statements list
                 sql_statements.append(create_table_sql)
                 
-                # Save CREATE TABLE SQL to cache with default name
-                cache_file = os.path.join(table_cache_dir, f"{md5_hash}.replace_me.sql")
+                # Save CREATE TABLE SQL to cache with default name using the column names MD5 hash
+                cache_file = os.path.join(table_cache_dir, f"{column_names_md5_hash}.replace_me.sql")
                 print(f"Saving CREATE TABLE SQL to cache: {cache_file}")
                 with open(cache_file, 'w') as f:
                     f.write(create_table_sql)

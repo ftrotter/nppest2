@@ -1,5 +1,5 @@
 CREATE TABLE REPLACE_ME_DB_NAME.REPLACE_ME_TABLE_NAME (
-    `NPI` VARCHAR(11),
+    `npi` VARCHAR(11),
     `Endpoint_Type` VARCHAR(8),
     `Endpoint_Type_Description` VARCHAR(25),
     `Endpoint` VARCHAR(1001),
