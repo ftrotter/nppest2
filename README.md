@@ -8,5 +8,11 @@ NPPEST is a long-time project to specifically highlight ongoing data problems in
 ## usage
 
 * download a current monthly version of the nppes data, and unzip it into ./data/your_nppes_data_month/
-* run `python import_nppes_dir.py ./data/your_nppes_data_month/
-* 
+* Import the raw data using variations on the following commands
+* python import_raw_csv_file.py --csvfilepath=./data/unzipped/endpoint_pfile_20050523-YOURDATEHERE.csv --db=raw_nppes --table=endpoint 
+* python import_raw_csv_file.py --csvfilepath=./data/unzipped/othername_pfile_20050523-YOURDATEHERE.csv --db=raw_nppes --table=othername 
+* python import_raw_csv_file.py --csvfilepath=./data/unzipped/pl_pfile_20050523-YOURDATEHERE.csv --db=raw_nppes --table=practicelocation 
+* python import_raw_csv_file.py --csvfilepath=./data/unzipped/npidata_pfile_20050523-YOURDATEHERE.csv --db=raw_nppes --table=npidata 
+
+
+
