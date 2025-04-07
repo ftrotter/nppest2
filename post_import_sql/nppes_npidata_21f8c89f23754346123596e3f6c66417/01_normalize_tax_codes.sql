@@ -286,3 +286,5 @@ OR      Healthcare_Provider_Taxonomy_Group_15 IS NOT NULL
 ;
 
 
+ALTER TABLE `taxonomies_normalized` ADD INDEX(`npi`, `Healthcare_Provider_Taxonomy_Code`); 
+
