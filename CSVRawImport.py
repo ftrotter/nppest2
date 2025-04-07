@@ -1,6 +1,14 @@
 import os
 import csv
 import re
+import subprocess
+try:
+    from tqdm import tqdm
+    TQDM_AVAILABLE = True
+except ImportError:
+    TQDM_AVAILABLE = False
+    print("Warning: tqdm library not found. Progress bar will not be displayed.")
+    print("To install tqdm, run: pip install tqdm")
 
 class CSVRawImport:
     @staticmethod
@@ -46,15 +54,39 @@ class CSVRawImport:
         if not os.path.isfile(full_path_to_csv_file):
             raise FileNotFoundError(f"CSV file not found: {full_path_to_csv_file}")
         
+        print(f"Studying CSV file: {os.path.basename(full_path_to_csv_file)}")
+
+        # Get file size for progress bar
+        file_size = os.path.getsize(full_path_to_csv_file)
+        print(f"File size: {file_size / (1024 * 1024):.2f} MB")
+
+        # Count the number of lines in the file using wc -l command
+        result = subprocess.run(['wc', '-l', full_path_to_csv_file], capture_output=True, text=True)
+        line_count = int(result.stdout.strip().split()[0])        
+        print(f"Line count: {line_count:,} lines")
+                
         # Read the CSV file
         with open(full_path_to_csv_file, 'r', newline='') as csvfile:
-            csv_reader = csv.reader(csvfile)
+            # Create a progress bar if tqdm is available
             
-            # Read the header row
-            try:
-                header_row = next(csv_reader)
-            except StopIteration:
+            
+
+            if TQDM_AVAILABLE:
+                pbar = tqdm(total=file_size, unit='B', unit_scale=True, desc="Learning: ")
+            
+
+            # Read the header line
+            header_line = csvfile.readline()
+            if not header_line:
                 raise ValueError("CSV file is empty")
+            
+            # Track position after reading header
+            current_position = len(header_line)
+            if TQDM_AVAILABLE:
+                pbar.update(current_position)
+            
+            # Parse header row
+            header_row = next(csv.reader([header_line]))
             
             # Convert column names to MySQL-friendly names
             column_names = [CSVRawImport.mysql_string_rename(col) for col in header_row]
@@ -62,11 +94,18 @@ class CSVRawImport:
             # Initialize dictionary to track maximum length of data in each column
             max_lengths = {col: 0 for col in column_names}
             
-            # Read the first data row to ensure the file has at least one data row
-            try:
-                first_data_row = next(csv_reader)
-            except StopIteration:
+            # Read the first data line to ensure the file has at least one data row
+            first_data_line = csvfile.readline()
+            if not first_data_line:
                 raise ValueError("CSV file does not contain any data rows")
+            
+            # Update position after reading first data line
+            current_position += len(first_data_line)
+            if TQDM_AVAILABLE:
+                pbar.update(len(first_data_line))
+            
+            # Parse first data row
+            first_data_row = next(csv.reader([first_data_line]))
             
             # Check if the first data row has the same number of columns as the header
             if len(first_data_row) != len(header_row):
@@ -78,7 +117,19 @@ class CSVRawImport:
             
             # Process the rest of the data rows
             row_number = 2  # Start from 2 because we've already processed the header (1) and first data row
-            for row in csv_reader:
+            
+            # Read and process the rest of the file line by line
+            for line in csvfile:
+                # Update position
+                line_length = len(line)
+                current_position += line_length
+                
+                # Update progress bar
+                if TQDM_AVAILABLE:
+                    pbar.update(line_length)
+                
+                # Parse the line
+                row = next(csv.reader([line]))
                 row_number += 1
                 
                 # Check if the row has the same number of columns as the header
@@ -88,6 +139,10 @@ class CSVRawImport:
                 # Update max lengths
                 for i, value in enumerate(row):
                     max_lengths[column_names[i]] = max(max_lengths[column_names[i]], len(value))
+            
+            # Close the progress bar when done
+            if TQDM_AVAILABLE:
+                pbar.close()
         
         # Generate SQL statements
         sql_statements = []
