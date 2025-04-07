@@ -87,7 +87,7 @@ class CSVRawImport:
             md5_hash = hashlib.md5(lowercase_header.encode()).hexdigest()
             
             # Check if cached CREATE TABLE SQL exists
-            cache_dir = "create_table_sql_cache"
+            cache_dir = "cache_create_table_sql"
             cache_pattern = os.path.join(cache_dir, f"{md5_hash}.*.sql")
             
             # Ensure cache directory exists
