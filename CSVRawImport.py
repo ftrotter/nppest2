@@ -80,19 +80,66 @@ class CSVRawImport:
             # Convert column names to MySQL-friendly names
             column_names = [CSVRawImport.mysql_string_rename(col) for col in header_row]
             
+            # Check for duplicate column names and add counting suffixes as needed
+            column_name_counts = {}
+            for i in range(len(column_names)):
+                col_name = column_names[i]
+                if col_name in column_name_counts:
+                    # Increment count and add suffix
+                    column_name_counts[col_name] += 1
+                    suffix = f"_{column_name_counts[col_name]:02d}"
+                    column_names[i] = f"{col_name}{suffix}"
+                else:
+                    # First occurrence of this column name
+                    column_name_counts[col_name] = 0
+
             # Create lowercase header string for MD5 calculation
             lowercase_header = ','.join([h.lower() for h in header_row])
             
             # Calculate MD5 hash of the lowercase header
             md5_hash = hashlib.md5(lowercase_header.encode()).hexdigest()
+
+            metadata_cache_dir = "cache_import_metadata"
+            # Make a cache directory for manual renaming of columns and other metadata
+            if not os.path.exists(metadata_cache_dir):
+                os.makedirs(metadata_cache_dir)
             
+            # Determine a human-readable name from the CSV filename
+            csv_basename = os.path.basename(full_path_to_csv_file)
+            human_readable_name = os.path.splitext(csv_basename)[0].lower()
+            
+            # Create JSON file path with the MD5 hash and human-readable name
+            json_cache_file = os.path.join(metadata_cache_dir, f"{md5_hash}.{human_readable_name}.json")
+            
+            # TODO the "human_readable_name" can and will be modified by the user. This should use the same glob loading method as the SQL cache
+            
+            import json
+            if os.path.exists(json_cache_file):
+                # Load column names from the cache file
+                print(f"Found cached metadata for this header structure: {json_cache_file}")
+                with open(json_cache_file, 'r') as f:
+                    metadata = json.load(f)
+                    # If there are manually renamed columns in the cache, use them
+                    if 'column_names' in metadata:
+                        print("Using cached column names with manual renames")
+                        column_names = metadata['column_names']
+            else:
+                # Create the cache file with the column names
+                print(f"Creating new metadata cache file: {json_cache_file}")
+                metadata = {
+                    'first_seen_header': header_row,
+                    'column_names': column_names
+                }
+                with open(json_cache_file, 'w') as f:
+                    json.dump(metadata, f, indent=2)
+
             # Check if cached CREATE TABLE SQL exists
-            cache_dir = "cache_create_table_sql"
-            cache_pattern = os.path.join(cache_dir, f"{md5_hash}.*.sql")
+            table_cache_dir = "cache_create_table_sql"
+            cache_pattern = os.path.join(table_cache_dir, f"{md5_hash}.*.sql")
             
             # Ensure cache directory exists
-            if not os.path.exists(cache_dir):
-                os.makedirs(cache_dir)
+            if not os.path.exists(table_cache_dir):
+                os.makedirs(table_cache_dir)
             
             # Initialize SQL statements list
             sql_statements = []
@@ -201,7 +248,7 @@ class CSVRawImport:
                 sql_statements.append(create_table_sql)
                 
                 # Save CREATE TABLE SQL to cache with default name
-                cache_file = os.path.join(cache_dir, f"{md5_hash}.replace_me.sql")
+                cache_file = os.path.join(table_cache_dir, f"{md5_hash}.replace_me.sql")
                 print(f"Saving CREATE TABLE SQL to cache: {cache_file}")
                 with open(cache_file, 'w') as f:
                     f.write(create_table_sql)

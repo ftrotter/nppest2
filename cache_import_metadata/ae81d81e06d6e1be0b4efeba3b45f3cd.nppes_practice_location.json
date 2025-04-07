@@ -1,0 +1,26 @@
+{
+  "first_seen_header": [
+    "NPI",
+    "Provider Secondary Practice Location Address- Address Line 1",
+    "Provider Secondary Practice Location Address-  Address Line 2",
+    "Provider Secondary Practice Location Address - City Name",
+    "Provider Secondary Practice Location Address - State Name",
+    "Provider Secondary Practice Location Address - Postal Code",
+    "Provider Secondary Practice Location Address - Country Code (If outside U.S.)",
+    "Provider Secondary Practice Location Address - Telephone Number",
+    "Provider Secondary Practice Location Address - Telephone Extension",
+    "Provider Practice Location Address - Fax Number"
+  ],
+  "column_names": [
+    "NPI",
+    "Provider_Secondary_Practice_Location_Address__Address_Line_1",
+    "Provider_Secondary_Practice_Location_Address___Address_Line_",
+    "Provider_Secondary_Practice_Location_Address___City_Name",
+    "Provider_Secondary_Practice_Location_Address___State_Name",
+    "Provider_Secondary_Practice_Location_Address___Postal_Code",
+    "Provider_Secondary_Practice_Location_Address___Country_Code_",
+    "Provider_Secondary_Practice_Location_Address___Telephone_Num",
+    "Provider_Secondary_Practice_Location_Address___Telephone_Ext",
+    "Provider_Practice_Location_Address___Fax_Number"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "first_seen_header": [
+    "NPI",
+    "Provider Other Organization Name",
+    "Provider Other Organization Name Type Code"
+  ],
+  "column_names": [
+    "npi",
+    "Provider_Other_Organization_Name",
+    "Provider_Other_Organization_Name_Type_Code"
+  ]
+}
