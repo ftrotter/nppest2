@@ -21,7 +21,7 @@
     "Affiliation Address Postal Code"
   ],
   "column_names": [
-    "NPI",
+    "npi",
     "Endpoint_Type",
     "Endpoint_Type_Description",
     "Endpoint",
