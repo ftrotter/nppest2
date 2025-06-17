@@ -1,0 +1,5 @@
+CREATE TABLE REPLACE_ME_DB_NAME.REPLACE_ME_TABLE_NAME (
+    `Column1` VARCHAR(6),
+    `Column2` VARCHAR(6),
+    `Column3` VARCHAR(6)
+);

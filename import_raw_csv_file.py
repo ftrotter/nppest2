@@ -42,10 +42,8 @@ class ImportRawCSVFile:
         db_username = os.getenv('DB_USERNAME', '')
         db_password = os.getenv('DB_PASSWORD', '')
         
-        # Create SQLAlchemy engine with PyMySQL
-        connection_string = f"{db_connection}+pymysql://{db_username}:{db_password}@{db_host}:{db_port}"
-        # Add local_infile=True to enable LOAD DATA LOCAL INFILE capability
-        engine = create_engine(connection_string, echo=False, connect_args={"local_infile": True})
+        # Check if we have valid database credentials
+        has_valid_credentials = db_username and db_password
         
         try:
             # Generate SQL statements using CSVRawImport
@@ -57,20 +55,35 @@ class ImportRawCSVFile:
                 sql_statements[i] = sql_statements[i].replace('REPLACE_ME_DB_NAME', db)
                 sql_statements[i] = sql_statements[i].replace('REPLACE_ME_TABLE_NAME', table)
             
-            # Execute SQL statements
-            with engine.connect() as connection:
-                for sql in sql_statements:
-                    print(f"Executing SQL: {sql}")
-                    try:
-                        connection.execute(text(sql))
-                        connection.commit()
-                        print("SQL executed successfully")
-                    except Exception as e:
-                        print(f"Error executing SQL: {e}")
-                        # Stop execution if there's an error
-                        sys.exit(1)
+            # If we have valid credentials, execute the SQL statements
+            if has_valid_credentials:
+                # Create SQLAlchemy engine with PyMySQL
+                connection_string = f"{db_connection}+pymysql://{db_username}:{db_password}@{db_host}:{db_port}"
+                # Add local_infile=True to enable LOAD DATA LOCAL INFILE capability
+                engine = create_engine(connection_string, echo=False, connect_args={"local_infile": True})
                 
-            print(f"CSV file {csvfilepath} successfully imported into {db}.{table}")
+                # Execute SQL statements
+                with engine.connect() as connection:
+                    for sql in sql_statements:
+                        print(f"Executing SQL: {sql}")
+                        try:
+                            connection.execute(text(sql))
+                            connection.commit()
+                            print("SQL executed successfully")
+                        except Exception as e:
+                            print(f"Error executing SQL: {e}")
+                            # Stop execution if there's an error
+                            sys.exit(1)
+                    
+                print(f"CSV file {csvfilepath} successfully imported into {db}.{table}")
+            else:
+                # Just print the SQL statements without executing them
+                print("\nNo valid database credentials found in .env file.")
+                print("Generating SQL statements without executing them:\n")
+                for sql in sql_statements:
+                    print(f"{sql}\n")
+                print(f"SQL statements for importing {csvfilepath} into {db}.{table} have been generated.")
+                print("To execute these statements, add valid database credentials to your .env file and run this script again.")
             
         except Exception as e:
             print(f"Error: {e}")

@@ -263,28 +263,89 @@ class CSVRawImport:
                 with open(cache_file, 'w') as f:
                     f.write(create_table_sql)
         
-        # LOAD DATA LOCAL INFILE statement
-        load_data_sql = """LOAD DATA LOCAL INFILE 'REPLACE_ME_CSV_FULL_PATH'
+        # Check if cached data load SQL exists
+        load_data_cache_dir = "cache_data_load_sql"
+        mysql_load_data_cache_pattern = os.path.join(load_data_cache_dir, f"{column_names_md5_hash}.mysql_load_data.*.sql")
+        postgresql_copy_cache_pattern = os.path.join(load_data_cache_dir, f"{column_names_md5_hash}.postgresql_copy.*.sql")
+        
+        # Ensure cache directory exists
+        if not os.path.exists(load_data_cache_dir):
+            os.makedirs(load_data_cache_dir)
+        
+        # Check if cached MySQL LOAD DATA SQL exists using glob pattern
+        mysql_load_data_cache_files = glob.glob(mysql_load_data_cache_pattern)
+        
+        if mysql_load_data_cache_files:
+            # Use the first matching file
+            mysql_load_data_cache_file = mysql_load_data_cache_files[0]
+            print(f"Found cached MySQL LOAD DATA SQL for this header structure: {mysql_load_data_cache_file}")
+            
+            # Load MySQL LOAD DATA SQL from cache
+            with open(mysql_load_data_cache_file, 'r') as f:
+                mysql_load_data_sql = f.read()
+            
+            sql_statements.append(mysql_load_data_sql)
+        else:
+            # MySQL LOAD DATA LOCAL INFILE statement
+            mysql_load_data_sql = """LOAD DATA LOCAL INFILE 'REPLACE_ME_CSV_FULL_PATH'
 INTO TABLE REPLACE_ME_DB_NAME.REPLACE_ME_TABLE_NAME
 FIELDS TERMINATED BY ','
 ENCLOSED BY '"'
 LINES TERMINATED BY '\\n'
 IGNORE 1 LINES
 ("""
+            
+            # Use @var for each column to read into user variables
+            mysql_load_data_sql += ", ".join([f"@{col}" for col in column_names])
+            mysql_load_data_sql += ")\n"
+            mysql_load_data_sql += "SET\n"
+            
+            # Add SET statements to assign from user variables and handle empty cells as NULL
+            set_statements = []
+            for col in column_names:
+                set_statements.append(f"`{col}` = NULLIF(@{col}, '')")
+            
+            mysql_load_data_sql += ",\n".join(set_statements)
+            mysql_load_data_sql += ";"
+            
+            sql_statements.append(mysql_load_data_sql)
+            
+            # Save MySQL LOAD DATA SQL to cache with specified naming format
+            mysql_load_data_cache_file = os.path.join(load_data_cache_dir, f"{column_names_md5_hash}.mysql_load_data.replace_me.sql")
+            print(f"Saving MySQL LOAD DATA SQL to cache: {mysql_load_data_cache_file}")
+            with open(mysql_load_data_cache_file, 'w') as f:
+                f.write(mysql_load_data_sql)
         
-        # Use @var for each column to read into user variables
-        load_data_sql += ", ".join([f"@{col}" for col in column_names])
-        load_data_sql += ")\n"
-        load_data_sql += "SET\n"
+        # Check if cached PostgreSQL COPY SQL exists using glob pattern
+        postgresql_copy_cache_files = glob.glob(postgresql_copy_cache_pattern)
         
-        # Add SET statements to assign from user variables and handle empty cells as NULL
-        set_statements = []
-        for col in column_names:
-            set_statements.append(f"`{col}` = NULLIF(@{col}, '')")
-        
-        load_data_sql += ",\n".join(set_statements)
-        load_data_sql += ";"
-        
-        sql_statements.append(load_data_sql)
+        if postgresql_copy_cache_files:
+            # Use the first matching file
+            postgresql_copy_cache_file = postgresql_copy_cache_files[0]
+            print(f"Found cached PostgreSQL COPY SQL for this header structure: {postgresql_copy_cache_file}")
+            
+            # Load PostgreSQL COPY SQL from cache
+            with open(postgresql_copy_cache_file, 'r') as f:
+                postgresql_copy_sql = f.read()
+            
+            # We don't add this to sql_statements by default since the current implementation uses MySQL
+            # But we generate and cache it for future use
+        else:
+            # PostgreSQL COPY statement
+            postgresql_copy_sql = """\\COPY REPLACE_ME_DB_NAME.REPLACE_ME_TABLE_NAME FROM 'REPLACE_ME_CSV_FULL_PATH' 
+WITH (
+    FORMAT csv,
+    HEADER true,
+    DELIMITER ',',
+    QUOTE '"',
+    NULL '',
+    ENCODING 'UTF8'
+);"""
+            
+            # Save PostgreSQL COPY SQL to cache with specified naming format
+            postgresql_copy_cache_file = os.path.join(load_data_cache_dir, f"{column_names_md5_hash}.postgresql_copy.replace_me.sql")
+            print(f"Saving PostgreSQL COPY SQL to cache: {postgresql_copy_cache_file}")
+            with open(postgresql_copy_cache_file, 'w') as f:
+                f.write(postgresql_copy_sql)
         
         return sql_statements
