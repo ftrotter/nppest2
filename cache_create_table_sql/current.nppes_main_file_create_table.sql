@@ -1,4 +1,4 @@
-CREATE TABLE nppes_raw.main_nppes_file (
+CREATE TABLE nppes_raw.main_file (
     "npi" BIGINT NOT NULL,
     "Entity_Type_Code" VARCHAR(2),
     "Replacement_NPI" BIGINT,
